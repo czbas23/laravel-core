@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\User;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Laravel\Socialite\Facades\Socialite;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
 
@@ -39,134 +42,41 @@ class LoginController extends Controller
     }
 
     /**
-     * Redirect the user to the GitHub authentication page.
+     * Redirect the user to the Provider authentication page.
      *
      * @return \Illuminate\Http\Response
      */
-    public function redirectToGitHub()
+    public function redirectToProvider($provider)
     {
-        return Socialite::driver('github')->redirect();
+        return Socialite::driver($provider)->redirect();
     }
 
     /**
-     * Obtain the user information from GitHub.
+     * Obtain the user information from Provider.
      *
      * @return \Illuminate\Http\Response
      */
-    public function handleGitHubCallback()
+    public function handleProviderCallback($provider)
     {
-        $user = Socialite::driver('github')->user();
+        try {
+            $userProvider = Socialite::driver($provider)->user();
+        } catch (\Exception $e) {
+            return redirect()->route('login');
+        }
 
-        // $user->token;
-    }
-
-    /**
-     * Redirect the user to the Facebook authentication page.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function redirectToFacebook()
-    {
-        return Socialite::driver('facebook')->redirect();
-    }
-
-    /**
-     * Obtain the user information from Facebook.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function handleFacebookCallback()
-    {
-        $user = Socialite::driver('facebook')->user();
-
-        // $user->token;
-    }
-
-    /**
-     * Redirect the user to the Google authentication page.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function redirectToGoogle()
-    {
-        return Socialite::driver('google')->redirect();
-    }
-
-    /**
-     * Obtain the user information from Google.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function handleGoogleCallback()
-    {
-        $user = Socialite::driver('google')->user();
-
-        // $user->token;
-    }
-
-    /**
-     * Redirect the user to the Twitter authentication page.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function redirectToTwitter()
-    {
-        return Socialite::driver('twitter')->redirect();
-    }
-
-    /**
-     * Obtain the user information from Twitter.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function handleTwitterCallback()
-    {
-        $user = Socialite::driver('twitter')->user();
-
-        // $user->token;
-    }
-
-    /**
-     * Redirect the user to the Gitlab authentication page.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function redirectToGitlab()
-    {
-        return Socialite::driver('gitlab')->redirect();
-    }
-
-    /**
-     * Obtain the user information from Gitlab.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function handleGitlabCallback()
-    {
-        $user = Socialite::driver('gitlab')->user();
-
-        // $user->token;
-    }
-
-    /**
-     * Redirect the user to the Bitbucket authentication page.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function redirectToBitbucket()
-    {
-        return Socialite::driver('bitbucket')->redirect();
-    }
-
-    /**
-     * Obtain the user information from Bitbucket.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function handleBitbucketCallback()
-    {
-        $user = Socialite::driver('bitbucket')->user();
-
-        // $user->token;
+        $email = filter_var($userProvider->getEmail(), FILTER_VALIDATE_EMAIL);
+        if ($email == false) {
+            $email = $userProvider->getId() . '@' . $provider . '.com';
+        }
+        $user = User::where('email', $email)->first();
+        if (!$user) {
+            $user = User::create([
+                'name' => $userProvider->getName(),
+                'email' => $email,
+                'password' => Hash::make($userProvider->token),
+            ]);
+        }
+        Auth::login($user);
+        return redirect($this->redirectTo);
     }
 }

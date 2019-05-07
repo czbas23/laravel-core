@@ -11,6 +11,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 class User extends Authenticatable implements Auditable
 {
     use \OwenIt\Auditing\Auditable;
+    use \Spatie\Permission\Traits\HasRoles;
     use HasApiTokens, Notifiable;
 
     /**
